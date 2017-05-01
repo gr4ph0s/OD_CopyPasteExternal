@@ -87,3 +87,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+#useless File
+C4D/Source/cinema4dsdk.opensdf

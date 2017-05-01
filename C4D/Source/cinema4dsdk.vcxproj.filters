@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="source">
+      <UniqueIdentifier>{21895B69-DE91-7035-0000-0000CA90681B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\C4D_PasteFromExternal">
+      <UniqueIdentifier>{a480c7d4-0671-4e83-91b8-55f865c0f574}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\C4D_ExportToExternal">
+      <UniqueIdentifier>{d1b03cdb-ff22-485f-a6cf-68f027b45959}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\main.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\C4D_ExportToExternal\C4D_ExportToExternal.cpp">
+      <Filter>source\C4D_ExportToExternal</Filter>
+    </ClCompile>
+    <ClCompile Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.cpp">
+      <Filter>source\C4D_PasteFromExternal</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\main.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="source\C4D_ExportToExternal\C4D_ExportToExternal.h">
+      <Filter>source\C4D_ExportToExternal</Filter>
+    </ClInclude>
+    <ClInclude Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.h">
+      <Filter>source\C4D_PasteFromExternal</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
