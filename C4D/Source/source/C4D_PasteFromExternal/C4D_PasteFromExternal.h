@@ -43,14 +43,14 @@ struct iobject{
     Int32 polyCount;
     maxon::BaseArray<struct_polygonData> polygonData;
 
-    maxon::BaseArray<struct_uvInfo> uvInfo;
-    maxon::BaseArray<struct_uvData> uvData;
+    std::vector<struct_uvInfo> uvInfo;
+    std::vector<struct_uvData> uvData;
 
-    maxon::BaseArray<String> weightName;
-    maxon::BaseArray<Float32> weightData;
+    std::vector<String> weightName;
+    std::vector<Float32> weightData;
 
-    maxon::BaseArray<String> morphName;
-    maxon::BaseArray<struct_morphData> morphData;
+    std::vector<String> morphName;
+    std::vector<struct_morphData> morphData;
     };
 
 

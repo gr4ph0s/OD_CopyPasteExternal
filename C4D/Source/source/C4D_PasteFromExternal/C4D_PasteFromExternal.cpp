@@ -90,7 +90,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 {
                 std::string strData = line.substr(line.find(":") + 1);
                 String maxonString = strData.c_str();
-                objectData->weightName.Insert(objectData->weightName.End, maxonString);
+                objectData->weightName.push_back(maxonString);
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
@@ -107,7 +107,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 buffer_struct.uvName = maxonStringName;
                 buffer_struct.uvCount = maxonStringUvCount.ToInt32();
 
-                objectData->uvInfo.Insert(objectData->uvInfo.end, buffer_struct);
+                objectData->uvInfo.push_back(buffer_struct);
                 toRead = READ_UV;
                 linesReaded = 0;
                 }
@@ -115,7 +115,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 {
                 std::string strData = line.substr(line.find(":") + 1);
                 String maxonString = strData.c_str();
-                objectData->morphName.Insert(objectData->morphName.End, maxonString);
+                objectData->morphName.push_back(maxonString);
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
@@ -168,7 +168,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
             String maxonStringData = line.c_str();
 
             //append data to our list
-            objectData->weightData.Insert(objectData->weightData.end, maxonStringData.ToFloat());
+            objectData->weightData.push_back(maxonStringData.ToFloat());
 
             //check if we still have something to read
             linesReaded++;
@@ -206,7 +206,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
             morphData.delta_z = maxonStringz.ToFloat();
 
             //append data to our list
-            objectData->morphData.Insert(objectData->morphData.end, morphData);
+            objectData->morphData.push_back(morphData);
 
             //check if we still have something to read
             linesReaded++;
