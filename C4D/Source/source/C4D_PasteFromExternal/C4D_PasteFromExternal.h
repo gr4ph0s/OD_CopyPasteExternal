@@ -5,6 +5,8 @@
 
 #define ID_C4D_PASTE_FROM_EXTERNAL 1039180
 
+enum face_type{FACE,SUBD,CCSS};
+
 struct struct_vertexData{
     Float32 x;
     Float32 y;
@@ -12,9 +14,9 @@ struct struct_vertexData{
     };
 
 struct struct_polygonData{
-    maxon::BaseArray<Int32> pts_id;
+    std::vector<Int32> pts_id;
     String material_name;
-    String type;
+    face_type type;
     };
 
 struct struct_uvInfo{
@@ -38,10 +40,10 @@ struct struct_morphData{
 
 struct iobject{
     Int32 vertexCount;
-    maxon::BaseArray<struct_vertexData> vertexData;
+    std::vector<struct_vertexData> vertexData;
 
     Int32 polyCount;
-    maxon::BaseArray<struct_polygonData> polygonData;
+    std::vector<struct_polygonData> polygonData;
 
     std::vector<struct_uvInfo> uvInfo;
     std::vector<struct_uvData> uvData;
@@ -61,7 +63,10 @@ public:
     //PasteFromExternal();
     //virtual ~PasteFromExternal();
     enum ReadState{ READ_NONE, READ_VERTICES, READ_POLYGONS, READ_WEIGHT, READ_MORPH, READ_UV};
-    virtual iobject* PasteFromExternal::ParseFileToIobject();
+
+    std::vector<std::string> split(const std::string& str, const std::string& delim);
+    iobject* ParseFileToIobject();
+
 
     //virtual Bool Execute(BaseDocument* doc);
 

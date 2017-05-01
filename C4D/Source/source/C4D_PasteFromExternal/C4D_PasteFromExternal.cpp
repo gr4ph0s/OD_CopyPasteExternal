@@ -29,6 +29,21 @@ return returnValue;
 }
 */
 
+//Split a string according a given delimiter
+std::vector<std::string> split(const std::string& str, const std::string& delim)
+{
+    std::vector<std::string> tokens;
+    size_t prev = 0, pos = 0;
+    do
+        {
+        pos = str.find(delim, prev);
+        if (pos == std::string::npos) pos = str.length();
+        std::string token = str.substr(prev, pos - prev);
+        if (!token.empty()) tokens.push_back(token);
+        prev = pos + delim.length();
+        } while (pos < str.length() && prev < str.length());
+    return tokens;
+}
 
 iobject* PasteFromExternal::ParseFileToIobject()
 {
@@ -63,10 +78,12 @@ iobject* PasteFromExternal::ParseFileToIobject()
             if (line.find("VERTICES:") == 0)
                 {
                 //get the number of vertices
-                std::string strData = line.substr(line.find(":") + 1);
+                std::vector<std::string> strData = this->split(line, ":");
+                if (strData.size() != 2)
+                    return nullptr;
 
                 //parse it in Int32 and fill data
-                String maxonString = strData.c_str();
+                String maxonString = strData[1].c_str();
                 linesToRead = maxonString.ToInt32();
                 objectData->vertexCount = linesToRead;
 
@@ -77,8 +94,11 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
             else if (line.find("POLYGONS:") == 0)
                 {
-                std::string strData = line.substr(line.find(":") + 1);
-                String maxonString = strData.c_str();
+                std::vector<std::string> strData = this->split(line, ":");
+                if (strData.size() != 2)
+                    return nullptr;
+
+                String maxonString = strData[1].c_str();
                 linesToRead = maxonString.ToInt32();
                 objectData->polyCount = linesToRead;
 
@@ -88,20 +108,21 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
             else if (line.find("WEIGHT:") == 0)
                 {
-                std::string strData = line.substr(line.find(":") + 1);
-                String maxonString = strData.c_str();
+                std::vector<std::string> strData = this->split(line, ":");
+                if (strData.size() != 2)
+                    return nullptr;
+                String maxonString = strData[0].c_str();
                 objectData->weightName.push_back(maxonString);
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
             else if (line.find("UV:") == 0)
                 {
-                size_t last = line.find_last_of(":");
-                size_t first = line.find_first_of(":");
-                std::string strDataName = line.substr(first + 1, last - first);
-                std::string strDataUvCount = line.substr(last + 1);
-                String maxonStringName = strDataName.c_str();
-                String maxonStringUvCount = strDataUvCount.c_str();
+                std::vector<std::string> strData = this->split(line, ":");
+                if (strData.size() != 3)
+                    return nullptr;
+                String maxonStringName = strData[1].c_str();
+                String maxonStringUvCount = strData[2].c_str();
 
                 struct_uvInfo buffer_struct;
                 buffer_struct.uvName = maxonStringName;
@@ -113,8 +134,10 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 }
             else if (line.find("MORPH:") == 0)
                 {
-                std::string strData = line.substr(line.find(":") + 1);
-                String maxonString = strData.c_str();
+                std::vector<std::string> strData = this->split(line, ":");
+                if (strData.size() != 2)
+                    return nullptr;
+                String maxonString = strData[1].c_str();
                 objectData->morphName.push_back(maxonString);
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
@@ -127,16 +150,14 @@ iobject* PasteFromExternal::ParseFileToIobject()
         case READ_VERTICES:
             {
             //Get Data in std type
-            size_t last = line.find_last_of(" ");
-            size_t first = line.find_first_of(" ");
-            std::string strx = line.substr(0, first);
-            std::string stry = line.substr(first + 1, last - first);
-            std::string strz = line.substr(last + 1);
+            std::vector<std::string> strData = this->split(line, " ");
+            if (strData.size() != 3)
+                return nullptr;
 
             //translate into c4d
-            String maxonStringx = strx.c_str();
-            String maxonStringy = stry.c_str();
-            String maxonStringz = strz.c_str();
+            String maxonStringx = strData[0].c_str();
+            String maxonStringy = strData[1].c_str();
+            String maxonStringz = strData[2].c_str();
 
             //fill our struct
             struct_vertexData vertexData;
@@ -145,7 +166,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
             vertexData.z = maxonStringz.ToFloat();
 
             //append data to our list
-            objectData->vertexData.Insert(objectData->vertexData.end, vertexData);
+            objectData->vertexData.push_back(vertexData);
             
             //check if we still have something to read
             linesReaded++;
@@ -157,9 +178,56 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
         case READ_POLYGONS:
             {
+            //Split the line and check if it's correctly formatted
+            std::vector<std::string> strData = this->split(line, ";;");
+            if (strData.size() != 3)
+                return nullptr;
 
-            }
+            struct_polygonData polygonData;
+            //Get polygon Data
+            std::vector<std::string> PolyIdstrData = this->split(line, ",");
+            std::vector<Int32> int32_pt_id;
+
+            //Convert them from std::string to Int32
+            for (std::string i : PolyIdstrData)
+            {
+                String buffer_String_pt_id = i.c_str();
+                Int32 buffer_int32 = buffer_String_pt_id.ToInt32();
+                int32_pt_id.push_back(buffer_int32);
+             }
+
+            //Get Material Name
+            String maxonStringMaterialName = strData[1].c_str();
+
+            //Get Face Type
+            face_type faceData;
+            if (strData[2] == "SubD")
+                faceData = SUBD;
+            else if (strData[2] == "CCSS")
+                faceData = CCSS;
+            else
+                faceData = FACE;
+
+            //translate them c4d
+            String maxonStringx = strData[0].c_str();
+            String maxonStringy = strData[1].c_str();
+            String maxonStringz = strData[2].c_str();
+
+            //fill our struct
+            polygonData.pts_id = int32_pt_id;
+            polygonData.material_name = strData[1].c_str();
+            polygonData.type = faceData;
+
+            //append data to our list
+            objectData->polygonData.push_back(polygonData);
+
+            //check if we still have something to read
+            linesReaded++;
+            if (linesReaded == linesToRead - 1)
+                toRead = READ_NONE;
+
             break;
+            }
 
         // read Weight
         case READ_WEIGHT:
@@ -180,27 +248,80 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
         case READ_UV:
             {
+            //Split the line and check if it's correctly formatted
+            std::vector<std::string> strData = this->split(line, ":");
+            if (strData.size() != 3 || strData.size() != 5)
+                return nullptr;
 
+            struct_uvData uvData;
+
+            //Get uv coordinate
+            std::vector<std::string> uvStrData = this->split(strData[0], " ");
+            if (uvStrData.size() != 2)
+                return nullptr;
+                
+            //translate into c4d
+            String maxonStringU = uvStrData[0].c_str();
+            String maxonStringV = uvStrData[1].c_str();
+
+            Bool isContinuous = false;
+            String maxonStringPoly_id, maxonStringPt_id;
+
+            //if discontinuous UV
+            if (uvStrData.size() == 5){
+                isContinuous = false;
+                maxonStringPoly_id = strData[2].c_str();
+                maxonStringPt_id = strData[4].c_str();
+            }
+            else{
+                isContinuous = true;
+                maxonStringPoly_id = "0";
+                maxonStringPt_id = strData[2].c_str();
+            }
+
+
+            //Fill our struct
+            uvData.isContinuous = isContinuous;
+            uvData.u = maxonStringU.ToFloat();
+            uvData.v = maxonStringU.ToFloat();
+            uvData.pt_id = maxonStringPt_id.ToInt32();
+            uvData.poly_id = maxonStringPoly_id.ToInt32();
+                           
+            //append data to our list
+            objectData->uvData.push_back(uvData);
+
+            //check if we still have something to read
+            linesReaded++;
+            if (linesReaded == linesToRead - 1)
+                toRead = READ_NONE;
             }
             break;
 
         //read morph
         case READ_MORPH:
             {
-            //Get Data in std type
-            size_t last = line.find_last_of(" ");
-            size_t first = line.find_first_of(" ");
-            std::string strx = line.substr(0, first);
-            std::string stry = line.substr(first + 1, last - first);
-            std::string strz = line.substr(last + 1);
+            struct_morphData morphData;
+
+            //Check if It's None and assign Null value
+            if (line.find("None") == 0)
+            {
+                Float32 NoneValue = 0.0;
+                morphData.delta_x = NoneValue;
+                morphData.delta_y = NoneValue;
+                morphData.delta_z = NoneValue;
+            }
+
+            //Split the line and check if it's correctly formatted
+            std::vector<std::string> strData = this->split(line, " ");
+            if (strData.size() != 3)
+                return nullptr;
 
             //translate into c4d
-            String maxonStringx = strx.c_str();
-            String maxonStringy = stry.c_str();
-            String maxonStringz = strz.c_str();
+            String maxonStringx = strData[0].c_str();
+            String maxonStringy = strData[1].c_str();
+            String maxonStringz = strData[2].c_str();
 
             //fill our struct
-            struct_morphData morphData;
             morphData.delta_x = maxonStringx.ToFloat();
             morphData.delta_y = maxonStringy.ToFloat();
             morphData.delta_z = maxonStringz.ToFloat();
