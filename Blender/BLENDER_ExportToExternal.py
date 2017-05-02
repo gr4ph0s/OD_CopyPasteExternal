@@ -51,7 +51,7 @@ class CopyToExternal(bpy.types.Operator):
             for vert in obj.data.vertices:
                 f.write(str(vert.co[0]) + " " + str(vert.co[2]) + " " + str(vert.co[1]*-1) + "\n")
 
-            #write polygons-point connection for poly reconstruction
+            #write polygons-point connection for poly reconstructions
             f.write("POLYGONS:" + str(poly_count) + "\n")
             for poly in obj.data.polygons:
                 surf = "Default"
@@ -59,9 +59,10 @@ class CopyToExternal(bpy.types.Operator):
                     slot = obj.material_slots[poly.material_index]
                     surf = slot.name
                 ppoint = ""
+                polytype = "FACE"
                 for idx in poly.vertices:
                     ppoint += "," + str(obj.data.vertices[idx].index)
-                f.write(ppoint[1:] + ";;" + str(surf) + "\n")
+                f.write(ppoint[1:] + ";;" + str(surf) + ";;" + polytype + "\n")
 
             #write all weights
             result1, result2 = mesh_to_weight_list(obj, mesh)

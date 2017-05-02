@@ -12,7 +12,7 @@ __status__     = "Copies / Pastes Objects between various 3d applications"
 __lwver__      = "2015"
 
 try:
-  import lwsdk, os, tempfile, sys
+  import lwsdk, os, tempfile, sys, time
 except ImportError:
     raise Exception("The LightWave Python module could not be loaded.")
 
@@ -23,13 +23,21 @@ except ImportError:
 class OD_LWCopyToExternal(lwsdk.ICommandSequence):
   def __init__(self, context):
     super(OD_LWCopyToExternal, self).__init__()
+    self.pidx=0
+    self.poidx=0
+    self.pointidxmap = {}
+    self.polyidxmap = {}
 
   def fast_point_scan(self, point_list, point_id):
     point_list.append(point_id)
+    self.pointidxmap[str(point_id)] = self.pidx
+    self.pidx+=1
     return lwsdk.EDERR_NONE
 
   def fast_poly_scan(self, poly_list, poly_id):
     poly_list.append(poly_id)
+    self.polyidxmap[str(poly_id)] = self.poidx
+    self.poidx+=1
     return lwsdk.EDERR_NONE
 
   # LWCommandSequence -----------------------------------
@@ -66,8 +74,9 @@ class OD_LWCopyToExternal(lwsdk.ICommandSequence):
       point_count = len(points)
       edit_op_result = lwsdk.EDERR_NONE
 
+
       polys = []
-      edit_op_result = mesh_edit_op.fastPolyScan(mesh_edit_op.state, self.fast_point_scan, (polys,), lwsdk.OPLYR_FG, 0)
+      edit_op_result = mesh_edit_op.fastPolyScan(mesh_edit_op.state, self.fast_poly_scan, (polys,), lwsdk.OPLYR_FG, 0)
       if edit_op_result != lwsdk.EDERR_NONE:
         mesh_edit_op.done(mesh_edit_op.state, edit_op_result, 0)
         return lwsdk.AFUNC_OK
@@ -89,14 +98,15 @@ class OD_LWCopyToExternal(lwsdk.ICommandSequence):
       # Filling Position Array for Selected Point
       for point in points:
         pos = mesh_edit_op.pointPos(mesh_edit_op.state, point)
-        f.write(str(pos[0]) + " " + str(pos[1]) + " " + str(pos[2]) + "\n")
+        f.write(str(pos[0]) + " " + str(pos[1]) + " " + str(pos[2]*-1) + "\n")
       #write polygons-point connection for poly reconstruction
       f.write("POLYGONS:" + str(len(polys)) + "\n")
+      x =0
       for poly in polys:
         surf = mesh_edit_op.polySurface(mesh_edit_op.state,poly)
         ppoint = ""
-        for point in mesh_edit_op.polyPoints(mesh_edit_op.state,poly):
-          ppoint += "," + str(points.index(point))
+        for point in reversed(mesh_edit_op.polyPoints(mesh_edit_op.state,poly)):
+          ppoint += "," + str(self.pointidxmap[str(point)])
         polytype = "FACE"
         subD = mesh_edit_op.polyType(mesh_edit_op.state, poly)# & lwsdk.LWPOLTYPE_SUBD
         if subD == lwsdk.LWPOLTYPE_SUBD:
@@ -127,12 +137,14 @@ class OD_LWCopyToExternal(lwsdk.ICommandSequence):
             pInfo = mesh_edit_op.pointVPGet(mesh_edit_op.state,point, poly)[1]
             if pInfo != None: #check if discontinous
               curPos = [pInfo[0], pInfo[1]]
-              discont.append([curPos, polys.index(poly), points.index(point)])
+              #print "oh:", self.polyidxmap[str(poly)]
+              discont.append([curPos, str(self.polyidxmap[str(poly)]), str(self.pointidxmap[str(point)])])
+              #discont.append([curPos, str(1), str(self.pointidxmap[str(point)])])
               c+= 1
             else: #otherwise, the uv coordinate is continuous
               if mesh_edit_op.pointVGet(mesh_edit_op.state,point)[1] != None:
                 curPos = [mesh_edit_op.pointVGet(mesh_edit_op.state,point)[1][0], mesh_edit_op.pointVGet(mesh_edit_op.state, point)[1][1]]
-                cont.append([curPos, points.index(point)])
+                cont.append([curPos, str(self.pointidxmap[str(point)])])
                 c+= 1
 
         f.write("UV:" + uvs + ":"+str(c) + "\n")
@@ -240,7 +252,7 @@ class OD_LWPasteFromExternal(lwsdk.ICommandSequence):
         points = []
         for i in xrange(verts[1] + 1, verts[1] + verts[0] + 1):
           x = lines[i].split(" ")
-          pt = [ float(x[0]), float(x[1]), float(x[2].strip()) ]
+          pt = [ float(x[0]), float(x[1]), float(x[2].strip())*-1 ]
           points.append(mesh_edit_op.addPoint(mesh_edit_op.state, pt))
       #create Polygons
       for polygons in polyline:
@@ -250,7 +262,8 @@ class OD_LWPasteFromExternal(lwsdk.ICommandSequence):
           surf = (lines[i].split(";;")[1]).strip()
           polytype = (lines[i].split(";;")[2]).strip()
           for x in (lines[i].split(";;")[0]).strip().split(","):
-            pts.append(points[int(x.strip())])
+            #pts.append(points[int(x.strip())])
+            pts.insert(0, (points[int(x.strip())]))
           ptype = lwsdk.LWPOLTYPE_FACE
           if polytype == "CCSS": ptype = lwsdk.LWPOLTYPE_SUBD
           elif polytype == "SUBD": ptype = lwsdk.LWPOLTYPE_PTCH
@@ -284,23 +297,23 @@ class OD_LWPasteFromExternal(lwsdk.ICommandSequence):
             mesh_edit_op.pntVMap(mesh_edit_op.state, points[int(split[2])], lwsdk.LWVMAP_TXUV, uvMap[0][0], [float(split[0].split(" ")[0]), float(split[0].split(" ")[1])])
           count +=1
 
-      #remove unused UVMaps
-      for m in loaded_uv:
-        if m not in str(uvMaps):
-          mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_TXUV, 2)
-          mesh_edit_op.vMapRemove(mesh_edit_op.state)
-
       # #remove unused UVMaps
-      for m in loaded_weight:
-        if m not in str(weightMaps):
-          mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_WGHT, 1)
-          mesh_edit_op.vMapRemove(mesh_edit_op.state)
+      # for m in loaded_uv:
+      #   if m not in str(uvMaps):
+      #     mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_TXUV, 2)
+      #     mesh_edit_op.vMapRemove(mesh_edit_op.state)
 
-      # #remove unused UVMaps
-      for m in loaded_morph:
-        if m not in str(morphMaps):
-          mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_MORF, 3)
-          mesh_edit_op.vMapRemove(mesh_edit_op.state)
+      # # #remove unused UVMaps
+      # for m in loaded_weight:
+      #   if m not in str(weightMaps):
+      #     mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_WGHT, 1)
+      #     mesh_edit_op.vMapRemove(mesh_edit_op.state)
+
+      # # #remove unused UVMaps
+      # for m in loaded_morph:
+      #   if m not in str(morphMaps):
+      #     mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_MORF, 3)
+      #     mesh_edit_op.vMapRemove(mesh_edit_op.state)
 
     except:
       edit_op_result = lwsdk.EDERR_USERABORT

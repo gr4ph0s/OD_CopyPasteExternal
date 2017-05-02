@@ -94,7 +94,7 @@ class OD_LWPasteFromExternal(lwsdk.ICommandSequence):
         points = []
         for i in xrange(verts[1] + 1, verts[1] + verts[0] + 1):
           x = lines[i].split(" ")
-          pt = [ float(x[0]), float(x[1]), float(x[2].strip()) ]
+          pt = [ float(x[0]), float(x[1]), float(x[2].strip())*-1 ]
           points.append(mesh_edit_op.addPoint(mesh_edit_op.state, pt))
       #create Polygons
       for polygons in polyline:
@@ -104,7 +104,7 @@ class OD_LWPasteFromExternal(lwsdk.ICommandSequence):
           surf = (lines[i].split(";;")[1]).strip()
           polytype = (lines[i].split(";;")[2]).strip()
           for x in (lines[i].split(";;")[0]).strip().split(","):
-            pts.append(points[int(x.strip())])
+            pts.insert(0, (points[int(x.strip())]))
           ptype = lwsdk.LWPOLTYPE_FACE
           if polytype == "CCSS": ptype = lwsdk.LWPOLTYPE_SUBD
           elif polytype == "SUBD": ptype = lwsdk.LWPOLTYPE_PTCH
@@ -138,23 +138,23 @@ class OD_LWPasteFromExternal(lwsdk.ICommandSequence):
             mesh_edit_op.pntVMap(mesh_edit_op.state, points[int(split[2])], lwsdk.LWVMAP_TXUV, uvMap[0][0], [float(split[0].split(" ")[0]), float(split[0].split(" ")[1])])
           count +=1
 
-      #remove unused UVMaps
-      for m in loaded_uv:
-        if m not in str(uvMaps):
-          mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_TXUV, 2)
-          mesh_edit_op.vMapRemove(mesh_edit_op.state)
-
       # #remove unused UVMaps
-      for m in loaded_weight:
-        if m not in str(weightMaps):
-          mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_WGHT, 1)
-          mesh_edit_op.vMapRemove(mesh_edit_op.state)
+      # for m in loaded_uv:
+      #   if m not in str(uvMaps):
+      #     mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_TXUV, 2)
+      #     mesh_edit_op.vMapRemove(mesh_edit_op.state)
 
-      # #remove unused UVMaps
-      for m in loaded_morph:
-        if m not in str(morphMaps):
-          mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_MORF, 3)
-          mesh_edit_op.vMapRemove(mesh_edit_op.state)
+      # # #remove unused UVMaps
+      # for m in loaded_weight:
+      #   if m not in str(weightMaps):
+      #     mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_WGHT, 1)
+      #     mesh_edit_op.vMapRemove(mesh_edit_op.state)
+
+      # # #remove unused UVMaps
+      # for m in loaded_morph:
+      #   if m not in str(morphMaps):
+      #     mesh_edit_op.vMapSelect(mesh_edit_op.state,  m, lwsdk.LWVMAP_MORF, 3)
+      #     mesh_edit_op.vMapRemove(mesh_edit_op.state)
 
     except:
       edit_op_result = lwsdk.EDERR_USERABORT
