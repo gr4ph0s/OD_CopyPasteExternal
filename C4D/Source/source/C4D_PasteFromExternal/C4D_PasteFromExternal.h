@@ -14,7 +14,7 @@ struct struct_vertexData{
     };
 
 struct struct_polygonData{
-    std::vector<Int32> pts_id;
+    maxon::BaseArray<Int32> pts_id;
     String material_name;
     face_type type;
     };
@@ -40,19 +40,19 @@ struct struct_morphData{
 
 struct iobject{
     Int32 vertexCount;
-    std::vector<struct_vertexData> vertexData;
+    maxon::BaseArray<struct_vertexData> vertexData;
 
     Int32 polyCount;
-    std::vector<struct_polygonData> polygonData;
+    maxon::BaseArray<struct_polygonData> polygonData;
 
-    std::vector<struct_uvInfo> uvInfo;
-    std::vector<struct_uvData> uvData;
+    maxon::BaseArray<struct_uvInfo> uvInfo;
+    maxon::BaseArray<struct_uvData> uvData;
 
-    std::vector<String> weightName;
-    std::vector<Float32> weightData;
+    maxon::BaseArray<String> weightName;
+    maxon::BaseArray<Float32> weightData;
 
-    std::vector<String> morphName;
-    std::vector<struct_morphData> morphData;
+    maxon::BaseArray<String> morphName;
+    maxon::BaseArray<struct_morphData> morphData;
     };
 
 
