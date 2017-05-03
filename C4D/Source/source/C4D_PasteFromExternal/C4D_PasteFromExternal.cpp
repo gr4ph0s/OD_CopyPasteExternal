@@ -30,7 +30,7 @@ return returnValue;
 */
 
 //Split a string according a given delimiter
-std::vector<std::string> split(const std::string& str, const std::string& delim)
+std::vector<std::string> PasteFromExternal::split(const std::string& str, const std::string& delim)
 {
     std::vector<std::string> tokens;
     size_t prev = 0, pos = 0;
@@ -45,9 +45,21 @@ std::vector<std::string> split(const std::string& str, const std::string& delim)
     return tokens;
 }
 
-
-iobject* PasteFromExternal::ParseFileToIobject()
+Bool PasteFromExternal::Execute(BaseDocument *doc)
 {
+    AutoNew<iobject> dataObj;
+    ParseFileToIobject(dataObj);
+    if (dataObj == nullptr)
+        GePrint("error");
+    return true;
+}
+
+
+void PasteFromExternal::ParseFileToIobject(iobject* objData)
+{
+    //default value
+    objData = nullptr;
+
     //GetTempDir
     char const *tempdirchar = getenv("TMPDIR");
     if (tempdirchar == 0)
@@ -61,13 +73,13 @@ iobject* PasteFromExternal::ParseFileToIobject()
     std::string folder = tempdir + '/' + "ODVertexData.txt";
     #endif
 
-    //inite our object data
+    //inite our final object data
     AutoNew<iobject> objectData;
 
     //Read data
     std::ifstream file(folder);
     if (!file)
-        return nullptr;
+        return;
 
     std::string line;
     ReadState toRead = READ_NONE;
@@ -84,7 +96,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 //get the number of vertices
                 std::vector<std::string> strData = this->split(line, ":");
                 if (strData.size() != 2)
-                    return nullptr;
+                    return;
 
                 //parse it in Int32 and fill data
                 String maxonString = strData[1].c_str();
@@ -100,7 +112,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 {
                 std::vector<std::string> strData = this->split(line, ":");
                 if (strData.size() != 2)
-                    return nullptr;
+                    return;
 
                 String maxonString = strData[1].c_str();
                 linesToRead = maxonString.ToInt32();
@@ -114,10 +126,10 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 {
                 std::vector<std::string> strData = this->split(line, ":");
                 if (strData.size() != 2)
-                    return nullptr;
+                    return;
                 String maxonString = strData[0].c_str();
                 if (objectData->weightName.Append(maxonString) == nullptr)
-                    return nullptr;
+                    return;
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
@@ -125,7 +137,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 {
                 std::vector<std::string> strData = this->split(line, ":");
                 if (strData.size() != 3)
-                    return nullptr;
+                    return;
                 String maxonStringName = strData[1].c_str();
                 String maxonStringUvCount = strData[2].c_str();
 
@@ -134,7 +146,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 buffer_struct.uvCount = maxonStringUvCount.ToInt32();
 
                 if(objectData->uvInfo.Append(buffer_struct) == nullptr)
-                    return nullptr;
+                    return;
                 toRead = READ_UV;
                 linesReaded = 0;
                 }
@@ -142,10 +154,10 @@ iobject* PasteFromExternal::ParseFileToIobject()
                 {
                 std::vector<std::string> strData = this->split(line, ":");
                 if (strData.size() != 2)
-                    return nullptr;
+                    return;
                 String maxonString = strData[1].c_str();
                 if(objectData->morphName.Append(maxonString) == nullptr)
-                    return nullptr;
+                    return;
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
@@ -159,7 +171,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
             //Get Data in std type
             std::vector<std::string> strData = this->split(line, " ");
             if (strData.size() != 3)
-                return nullptr;
+                return;
 
             //translate into c4d
             String maxonStringx = strData[0].c_str();
@@ -174,7 +186,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
             //append data to our list
             if(objectData->vertexData.Append(vertexData) == nullptr)
-                return nullptr;
+                return;
             
             //check if we still have something to read
             linesReaded++;
@@ -189,20 +201,19 @@ iobject* PasteFromExternal::ParseFileToIobject()
             //Split the line and check if it's correctly formatted
             std::vector<std::string> strData = this->split(line, ";;");
             if (strData.size() != 3)
-                return nullptr;
+                return;
 
-            struct_polygonData polygonData;
+            AutoNew<struct_polygonData> polygonData;
             //Get polygon Data
             std::vector<std::string> PolyIdstrData = this->split(line, ",");
-            maxon::BaseArray<Int32> int32_pt_id;
+            std::vector<Int32> int32_pt_id;
 
             //Convert them from std::string to Int32
             for (std::string i : PolyIdstrData)
             {
                 String buffer_String_pt_id = i.c_str();
                 Int32 buffer_int32 = buffer_String_pt_id.ToInt32();
-                if(int32_pt_id.Append(buffer_int32) == nullptr)
-                    return nullptr;
+                int32_pt_id.push_back(buffer_int32);
              }
 
             //Get Material Name
@@ -223,14 +234,13 @@ iobject* PasteFromExternal::ParseFileToIobject()
             String maxonStringz = strData[2].c_str();
 
             //fill our struct
-            if(polygonData.pts_id.CopyFrom(int32_pt_id) == maxon::FAILED)
-                return nullptr;
-            polygonData.material_name = strData[1].c_str();
-            polygonData.type = faceData;
+            polygonData->pts_id = int32_pt_id;
+            polygonData->material_name = strData[1].c_str();
+            polygonData->type = faceData;
 
             //append data to our list
             if(objectData->polygonData.Append(polygonData) == nullptr)
-                return nullptr;
+                return;
 
             //check if we still have something to read
             linesReaded++;
@@ -248,7 +258,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
             //append data to our list
             if(objectData->weightData.Append(maxonStringData.ToFloat()) == nullptr)
-                return nullptr;
+                return;
 
             //check if we still have something to read
             linesReaded++;
@@ -263,14 +273,14 @@ iobject* PasteFromExternal::ParseFileToIobject()
             //Split the line and check if it's correctly formatted
             std::vector<std::string> strData = this->split(line, ":");
             if (strData.size() != 3 || strData.size() != 5)
-                return nullptr;
+                return;
 
             struct_uvData uvData;
 
             //Get uv coordinate
             std::vector<std::string> uvStrData = this->split(strData[0], " ");
             if (uvStrData.size() != 2)
-                return nullptr;
+                return;
                 
             //translate into c4d
             String maxonStringU = uvStrData[0].c_str();
@@ -301,7 +311,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
                            
             //append data to our list
             if(objectData->uvData.Append(uvData) == nullptr)
-                return nullptr;
+                return;
 
             //check if we still have something to read
             linesReaded++;
@@ -327,7 +337,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
             //Split the line and check if it's correctly formatted
             std::vector<std::string> strData = this->split(line, " ");
             if (strData.size() != 3)
-                return nullptr;
+                return;
 
             //translate into c4d
             String maxonStringx = strData[0].c_str();
@@ -341,7 +351,7 @@ iobject* PasteFromExternal::ParseFileToIobject()
 
             //append data to our list
             if(objectData->morphData.Append(morphData) == nullptr)
-                return nullptr;
+                return;
 
             //check if we still have something to read
             linesReaded++;
@@ -352,7 +362,9 @@ iobject* PasteFromExternal::ParseFileToIobject()
             }
         }
     }
-   return nullptr;
+    //set data to our returned data
+    objData = objectData;
+    return;
 }
 
 Bool RegisterPasteFromExternal()

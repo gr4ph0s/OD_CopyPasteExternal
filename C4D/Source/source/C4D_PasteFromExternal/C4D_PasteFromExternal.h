@@ -14,9 +14,9 @@ struct struct_vertexData{
     };
 
 struct struct_polygonData{
-    maxon::BaseArray<Int32> pts_id;
-    String material_name;
-    face_type type;
+        std::vector<Int32> pts_id;
+        String material_name;
+        face_type type;
     };
 
 struct struct_uvInfo{
@@ -64,8 +64,10 @@ public:
     //virtual ~PasteFromExternal();
     enum ReadState{ READ_NONE, READ_VERTICES, READ_POLYGONS, READ_WEIGHT, READ_MORPH, READ_UV};
 
+    virtual Bool Execute(BaseDocument *doc);
+
     std::vector<std::string> split(const std::string& str, const std::string& delim);
-    iobject* ParseFileToIobject();
+    void ParseFileToIobject(iobject* objData);
 
 
     //virtual Bool Execute(BaseDocument* doc);
