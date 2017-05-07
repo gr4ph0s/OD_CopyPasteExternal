@@ -14,7 +14,7 @@ struct struct_vertexData{
     };
 
 struct struct_polygonData{
-        std::vector<Int32> pts_id;
+        maxon::BaseArray<Int32> pts_id;
         String material_name;
         face_type type;
     };
@@ -43,7 +43,7 @@ struct iobject{
     maxon::BaseArray<struct_vertexData> vertexData;
 
     Int32 polyCount;
-    maxon::BaseArray<struct_polygonData> polygonData;
+    maxon::BaseArray<struct_polygonData*> polygonData;
 
     maxon::BaseArray<struct_uvInfo> uvInfo;
     maxon::BaseArray<struct_uvData> uvData;
@@ -53,6 +53,8 @@ struct iobject{
 
     maxon::BaseArray<String> morphName;
     maxon::BaseArray<struct_morphData> morphData;
+
+    Bool IsReadFinnished;
     };
 
 
@@ -68,6 +70,7 @@ public:
 
     std::vector<std::string> split(const std::string& str, const std::string& delim);
     void ParseFileToIobject(iobject* objData);
+    Bool PasteFromExternal::CreatePolyObj(const iobject* objData, BaseDocument *doc);
 
 
     //virtual Bool Execute(BaseDocument* doc);

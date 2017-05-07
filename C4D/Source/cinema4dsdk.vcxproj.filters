@@ -10,6 +10,9 @@
     <Filter Include="source\C4D_ExportToExternal">
       <UniqueIdentifier>{d1b03cdb-ff22-485f-a6cf-68f027b45959}</UniqueIdentifier>
     </Filter>
+    <Filter Include="source\Parser">
+      <UniqueIdentifier>{0cd5ff3c-c65b-4342-85a2-8a538d6ae307}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -21,6 +24,9 @@
     <ClCompile Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.cpp">
       <Filter>source\C4D_PasteFromExternal</Filter>
     </ClCompile>
+    <ClCompile Include="source\Parser\Parser.cpp">
+      <Filter>source\Parser</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\main.h">
@@ -31,6 +37,9 @@
     </ClInclude>
     <ClInclude Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.h">
       <Filter>source\C4D_PasteFromExternal</Filter>
+    </ClInclude>
+    <ClInclude Include="source\Parser\Parser.h">
+      <Filter>source\Parser</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

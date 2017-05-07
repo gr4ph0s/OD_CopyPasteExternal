@@ -8,8 +8,7 @@ Bool PluginStart(void)
     if (!RegisterPasteFromExternal())
         return false;
 
-    if (!RegisterExportToExternal())
-        return false;
+
 	return true;
 }
 

@@ -49,19 +49,66 @@ Bool PasteFromExternal::Execute(BaseDocument *doc)
 {
     AutoNew<iobject> dataObj;
     ParseFileToIobject(dataObj);
-    if (dataObj == nullptr)
+    if (dataObj == nullptr || !dataObj->IsReadFinnished)
         GePrint("error");
+
+    CreatePolyObj(dataObj, doc);
+    return true;
+}
+
+//Ugly function just for testing of the lolz !!! :)
+Bool PasteFromExternal::CreatePolyObj(const iobject* objData,BaseDocument *doc)
+{
+    StopAllThreads();
+    doc->StartUndo();
+
+    PolygonObject* polyObj = PolygonObject::Alloc(objData->vertexCount, objData->polyCount);
+    PointObject* ptObj = ToPoint(polyObj);
+
+    //Set Vertices
+    //Get the write array of the obj
+    Vector* list_ptObj_write = ptObj->GetPointW();
+    for (int i = 0; i < objData->vertexCount; i++) {
+        list_ptObj_write[i] = Vector(objData->vertexData[i].x, objData->vertexData[i].y, objData->vertexData[i].z);
+    }
+
+    CPolygon* list_polyObj_write = polyObj->GetPolygonW();
+    for (int i = 0; i < objData->polyCount; i++) {
+        Int32 count_pts_in_poly = objData->polygonData[i]->pts_id.GetCount();
+        for (int y = 0; y < count_pts_in_poly; y++){
+            list_polyObj_write[i][y] = objData->polygonData[i]->pts_id[y];
+        }
+    }
+
+    doc->AddUndo(UNDOTYPE_NEW, polyObj);
+    doc->InsertObject(polyObj, nullptr, nullptr);
+
+    doc->EndUndo();
+    EventAdd();
     return true;
 }
 
 
+//Ugly function too will be moved to parser class and cut
 void PasteFromExternal::ParseFileToIobject(iobject* objData)
 {
-    //default value
-    objData = nullptr;
+    Bool debug = true;
+    objData->IsReadFinnished = false;
 
     //GetTempDir
     char const *tempdirchar = getenv("TMPDIR");
+    if (tempdirchar == 0)
+        tempdirchar = getenv("TMP");
+
+    if (tempdirchar == 0)
+        tempdirchar = getenv("TEMP");
+
+    if (tempdirchar == 0)
+        tempdirchar = getenv("TEMPDIR");
+
+    if (tempdirchar == 0)
+        tempdirchar = getenv("USERPROFILE");
+
     if (tempdirchar == 0)
         tempdirchar = "/tmp";
 
@@ -73,13 +120,13 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
     std::string folder = tempdir + '/' + "ODVertexData.txt";
     #endif
 
-    //inite our final object data
-    AutoNew<iobject> objectData;
-
     //Read data
     std::ifstream file(folder);
-    if (!file)
+    if (!file){
+        if (debug)
+            GePrint("Can't read File");
         return;
+    }
 
     std::string line;
     ReadState toRead = READ_NONE;
@@ -95,13 +142,16 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
                 {
                 //get the number of vertices
                 std::vector<std::string> strData = this->split(line, ":");
-                if (strData.size() != 2)
+                if (strData.size() != 2){
+                    if (debug)
+                        GePrint("VERTICE HEADER - Bad formating");
                     return;
+                }
 
                 //parse it in Int32 and fill data
                 String maxonString = strData[1].c_str();
                 linesToRead = maxonString.ToInt32();
-                objectData->vertexCount = linesToRead;
+                objData->vertexCount = linesToRead;
 
                 //Set read mode to Vertices
                 toRead = READ_VERTICES;
@@ -111,12 +161,15 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             else if (line.find("POLYGONS:") == 0)
                 {
                 std::vector<std::string> strData = this->split(line, ":");
-                if (strData.size() != 2)
+                if (strData.size() != 2){
+                    if (debug)
+                        GePrint("POLY HEADER - Bad formating");
                     return;
+                }
 
                 String maxonString = strData[1].c_str();
                 linesToRead = maxonString.ToInt32();
-                objectData->polyCount = linesToRead;
+                objData->polyCount = linesToRead;
 
                 toRead = READ_POLYGONS;
                 linesReaded = 0;
@@ -125,19 +178,28 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             else if (line.find("WEIGHT:") == 0)
                 {
                 std::vector<std::string> strData = this->split(line, ":");
-                if (strData.size() != 2)
+                if (strData.size() != 2){
+                    if (debug)
+                        GePrint("WEIGHT HEADER - Bad formating");
                     return;
+                }
                 String maxonString = strData[0].c_str();
-                if (objectData->weightName.Append(maxonString) == nullptr)
+                if (objData->weightName.Append(maxonString) == nullptr){
+                    if (debug)
+                        GePrint("WEIGHT HEADER - FAIL INSERT");
                     return;
+                }
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
             else if (line.find("UV:") == 0)
                 {
                 std::vector<std::string> strData = this->split(line, ":");
-                if (strData.size() != 3)
+                if (strData.size() != 3){
+                    if (debug)
+                        GePrint("UV HEADER - BAD HEADER");
                     return;
+                }
                 String maxonStringName = strData[1].c_str();
                 String maxonStringUvCount = strData[2].c_str();
 
@@ -145,19 +207,28 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
                 buffer_struct.uvName = maxonStringName;
                 buffer_struct.uvCount = maxonStringUvCount.ToInt32();
 
-                if(objectData->uvInfo.Append(buffer_struct) == nullptr)
+                if (objData->uvInfo.Append(buffer_struct) == nullptr){
+                    if (debug)
+                        GePrint("UV HEADER - FAIL INSERT");
                     return;
+                }
                 toRead = READ_UV;
                 linesReaded = 0;
                 }
             else if (line.find("MORPH:") == 0)
                 {
                 std::vector<std::string> strData = this->split(line, ":");
-                if (strData.size() != 2)
+                if (strData.size() != 2){
+                    if (debug)
+                        GePrint("MORPH HEADER - BAD HEADER");
                     return;
+                }
                 String maxonString = strData[1].c_str();
-                if(objectData->morphName.Append(maxonString) == nullptr)
+                if (objData->morphName.Append(maxonString) == nullptr){
+                    if (debug)
+                        GePrint("UV HEADER - FAIL INSERT");
                     return;
+                }
                 toRead = READ_WEIGHT;
                 linesReaded = 0;
                 }
@@ -170,8 +241,11 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             {
             //Get Data in std type
             std::vector<std::string> strData = this->split(line, " ");
-            if (strData.size() != 3)
+            if (strData.size() != 3){
+                if (debug)
+                    GePrint("VERTICE - BAD Formating");
                 return;
+            }
 
             //translate into c4d
             String maxonStringx = strData[0].c_str();
@@ -185,12 +259,15 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             vertexData.z = maxonStringz.ToFloat();
 
             //append data to our list
-            if(objectData->vertexData.Append(vertexData) == nullptr)
+            if (objData->vertexData.Append(vertexData) == nullptr){
+                if (debug)
+                    GePrint("VERTICE - FAIL INSERT - 01");
                 return;
+            }
             
             //check if we still have something to read
             linesReaded++;
-            if (linesReaded == linesToRead -1)
+            if (linesReaded == linesToRead)
                 toRead = READ_NONE;
 
             break;
@@ -200,21 +277,24 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             {
             //Split the line and check if it's correctly formatted
             std::vector<std::string> strData = this->split(line, ";;");
-            if (strData.size() != 3)
+            if (strData.size() != 3){
+                if (debug)
+                    GePrint("FACE - BAD FORMATTING");
                 return;
+            }
 
-            AutoNew<struct_polygonData> polygonData;
+            objData->polygonData.Append();
+            Int32 last_id = objData->polygonData.GetCount() - 1;
+            if (last_id < 0){
+                if (debug)
+                    GePrint("FACE - BAD Last_ID");
+                return;
+            }
+            objData->polygonData[last_id] = NewObjClear(struct_polygonData);
+            
+
             //Get polygon Data
             std::vector<std::string> PolyIdstrData = this->split(line, ",");
-            std::vector<Int32> int32_pt_id;
-
-            //Convert them from std::string to Int32
-            for (std::string i : PolyIdstrData)
-            {
-                String buffer_String_pt_id = i.c_str();
-                Int32 buffer_int32 = buffer_String_pt_id.ToInt32();
-                int32_pt_id.push_back(buffer_int32);
-             }
 
             //Get Material Name
             String maxonStringMaterialName = strData[1].c_str();
@@ -233,18 +313,25 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             String maxonStringy = strData[1].c_str();
             String maxonStringz = strData[2].c_str();
 
-            //fill our struct
-            polygonData->pts_id = int32_pt_id;
-            polygonData->material_name = strData[1].c_str();
-            polygonData->type = faceData;
+            //Convert them from std::string to Int32
+            for (std::string i : PolyIdstrData)
+                {
+                String buffer_String_pt_id = i.c_str();
+                Int32 buffer_int32 = buffer_String_pt_id.ToInt32();
+                if (objData->polygonData[last_id]->pts_id.Append(buffer_int32) == nullptr){
+                    if (debug)
+                        GePrint("FACE - FAIL INSERT - 02");
+                    return;
+                }
+                }
 
-            //append data to our list
-            if(objectData->polygonData.Append(polygonData) == nullptr)
-                return;
+            //fill our struct
+            objData->polygonData[last_id]->material_name = strData[1].c_str();
+            objData->polygonData[last_id]->type = faceData;
 
             //check if we still have something to read
             linesReaded++;
-            if (linesReaded == linesToRead - 1)
+            if (linesReaded == linesToRead)
                 toRead = READ_NONE;
 
             break;
@@ -257,12 +344,15 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             String maxonStringData = line.c_str();
 
             //append data to our list
-            if(objectData->weightData.Append(maxonStringData.ToFloat()) == nullptr)
+            if (objData->weightData.Append(maxonStringData.ToFloat()) == nullptr){
+                if (debug)
+                    GePrint("WEIGHT - FAIL INSERT");
                 return;
+            }
 
             //check if we still have something to read
             linesReaded++;
-            if (linesReaded == linesToRead - 1)
+            if (linesReaded == linesToRead)
                 toRead = READ_NONE;
 
             break;
@@ -272,15 +362,21 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             {
             //Split the line and check if it's correctly formatted
             std::vector<std::string> strData = this->split(line, ":");
-            if (strData.size() != 3 || strData.size() != 5)
+            if (strData.size() != 3 && strData.size() != 5){
+                if (debug)
+                    GePrint("UV - BAD FORMATTING - 01");
                 return;
+            }
 
             struct_uvData uvData;
 
             //Get uv coordinate
             std::vector<std::string> uvStrData = this->split(strData[0], " ");
-            if (uvStrData.size() != 2)
+            if (uvStrData.size() != 2){
+                if (debug)
+                    GePrint("UV - BAD FORMATTING - 02");
                 return;
+            }
                 
             //translate into c4d
             String maxonStringU = uvStrData[0].c_str();
@@ -301,7 +397,6 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
                 maxonStringPt_id = strData[2].c_str();
             }
 
-
             //Fill our struct
             uvData.isContinuous = isContinuous;
             uvData.u = maxonStringU.ToFloat();
@@ -310,12 +405,15 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             uvData.poly_id = maxonStringPoly_id.ToInt32();
                            
             //append data to our list
-            if(objectData->uvData.Append(uvData) == nullptr)
+            if (objData->uvData.Append(uvData) == nullptr){
+                if (debug)
+                    GePrint("UV - FAIL INSERT");
                 return;
+            }
 
             //check if we still have something to read
             linesReaded++;
-            if (linesReaded == linesToRead - 1)
+            if (linesReaded == linesToRead)
                 toRead = READ_NONE;
             }
             break;
@@ -336,8 +434,11 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
 
             //Split the line and check if it's correctly formatted
             std::vector<std::string> strData = this->split(line, " ");
-            if (strData.size() != 3)
+            if (strData.size() != 3){
+                if (debug)
+                    GePrint("MORPH - BAD FORMATTING");
                 return;
+            }
 
             //translate into c4d
             String maxonStringx = strData[0].c_str();
@@ -350,12 +451,15 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
             morphData.delta_z = maxonStringz.ToFloat();
 
             //append data to our list
-            if(objectData->morphData.Append(morphData) == nullptr)
+            if (objData->morphData.Append(morphData) == nullptr){
+                if (debug)
+                    GePrint("MORPH - FAIL INSERT");
                 return;
+            }
 
             //check if we still have something to read
             linesReaded++;
-            if (linesReaded == linesToRead - 1)
+            if (linesReaded == linesToRead)
                 toRead = READ_NONE;
 
             break;
@@ -363,7 +467,7 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
         }
     }
     //set data to our returned data
-    objData = objectData;
+    objData->IsReadFinnished = true;
     return;
 }
 

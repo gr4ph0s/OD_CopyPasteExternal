@@ -127,11 +127,13 @@
     <ClCompile Include="source\C4D_ExportToExternal\C4D_ExportToExternal.cpp" />
     <ClCompile Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.cpp" />
     <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="source\Parser\Parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\C4D_ExportToExternal\C4D_ExportToExternal.h" />
     <ClInclude Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.h" />
     <ClInclude Include="source\main.h" />
+    <ClInclude Include="source\Parser\Parser.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
