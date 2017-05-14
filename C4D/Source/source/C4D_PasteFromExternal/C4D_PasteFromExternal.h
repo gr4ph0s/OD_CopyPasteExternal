@@ -12,13 +12,13 @@ class PasteFromExternal : public CommandData
 public:
     //PasteFromExternal();
     //virtual ~PasteFromExternal();
-
+ 
     virtual Bool Execute(BaseDocument *doc);
 
     std::vector<std::string> split(const std::string& str, const std::string& delim);
     void ParseFileToIobject(iobject* objData);
     Bool PasteFromExternal::CreatePolyObj(const iobject* objData, BaseDocument *doc);
-
+    Bool PasteFromExternal::CreateUV(const iobject* objData, BaseDocument* doc, PolygonObject* obj);
 
     //virtual Bool Execute(BaseDocument* doc);
 

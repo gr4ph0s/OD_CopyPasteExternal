@@ -2,11 +2,13 @@
 #include <string>
 #include <vector>
 #include <c4d_basetag.h>
+#include <c4d_baseobject.h>
 
 #include "c4d.h"
 #include "C4D_PasteFromExternal.h"
 #include "../Parser/ParserRead.h"
 #include "../../DataStruct.h"
+
 
 /*
 enum ValidMesh{
@@ -33,8 +35,62 @@ return returnValue;
 }
 */
 
+// Made from my pythonic version https://gist.github.com/gr4ph0s/ebecaabcf90bbdd73a54124544e0b532
+void GetLinkedDiscontinuous(PolygonObject* pObj, Int32 pt_id, Int32 poly_id, maxon::BaseArray<struct_uv>* list_id){
+    const CPolygon* polys_data = pObj->GetPolygonR();
+    const CPolygon poly = polys_data[poly_id];
+
+    Int32 found_id = poly.Find(pt_id);
+
+    if (found_id != NOTOK){
+        struct_uv buffer_struct;
+        buffer_struct.poly_id = poly_id;
+        buffer_struct.pt_num = found_id;
+        list_id->Append(buffer_struct);
+        }
+}
+
+// Made from my pythonic version https://gist.github.com/gr4ph0s/ebecaabcf90bbdd73a54124544e0b532
+void GetLinkedContinuous(PolygonObject* pObj, Int32 pt_id, maxon::BaseArray<struct_uv>* list_id){
+    Neighbor nbr = Neighbor();
+    nbr.Init(pObj->GetPointCount(), pObj->GetPolygonR(), pObj->GetPolygonCount(), nullptr);
+    Int32 *linkedPoly = nullptr, linkedPolyCount = 0;
+    nbr.GetPointPolys(pt_id, &linkedPoly, &linkedPolyCount);
+    const CPolygon* polys_data = pObj->GetPolygonR();
+
+    for (Int32 poly_id = 0; poly_id<linkedPolyCount; poly_id++){
+        const CPolygon poly = polys_data[poly_id];
+        Int32 found_id = poly.Find(pt_id);
+
+        if (found_id != NOTOK){
+            struct_uv buffer_struct;
+            buffer_struct.poly_id = poly_id;
+            buffer_struct.pt_num = found_id;
+            list_id->Append(buffer_struct);
+        }
+    }
+}
 
 
+Bool PasteFromExternal::CreateUV(const iobject* objData, BaseDocument* doc, PolygonObject* obj)
+{
+    //CREATE UV again there is no proper ngon handle.
+    for (int i = 0; i < objData->polyCount; i++) {
+        //for each UV Info create an UV tag
+        UVWTag* uvwTag = UVWTag::Alloc(objData->polyCount);
+        uvwTag->SetName(objData->uvInfo[i].uvName);
+
+        Int32 globalCount = 0;
+
+        //then we set each UV
+        UVWStruct res;
+        UVWHandle data = uvwTag->GetDataAddressW();
+        for (Int32 y = globalCount; y<uvwTag->GetDataCount() + globalCount; y++){
+            UVWTag::Set(data, y, res);
+        }
+    globalCount += objData->uvInfo[i].uvCount;
+    }
+}
 
 //Ugly function just for testing of the lolz !!! :)
 Bool PasteFromExternal::CreatePolyObj(const iobject* objData,BaseDocument *doc)
@@ -78,23 +134,8 @@ Bool PasteFromExternal::CreatePolyObj(const iobject* objData,BaseDocument *doc)
                 return false;
             }        
     }
-    /*CREATE UV again there is no proper ngon handle.
-    for (int i = 0; i < objData->polyCount; i++) {
-        //for each UV Info create an UV tag
-        UVWTag* uvwTag = UVWTag::Alloc(objData->polyCount);
-        uvwTag->SetName(objData->uvInfo[i].uvName);
+    this->CreateUV(objData, doc, polyObj);
 
-        Int32 globalCount = 0;
-
-        //then we set each UV
-        UVWStruct res;
-        UVWHandle data = uvwTag->GetDataAddressW();
-        for (Int32 y = globalCount; y<uvwTag->GetDataCount() + globalCount; y++){
-            UVWTag::set(data, y, res);
-        }
-        globalCount += objData->uvInfo[i].uvCount;
-    }
-    */
 
     doc->AddUndo(UNDOTYPE_NEW, polyObj);
     doc->InsertObject(polyObj, nullptr, nullptr);

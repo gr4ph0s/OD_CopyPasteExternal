@@ -7,6 +7,11 @@ enum ReadState{ READ_NONE, READ_VERTICES, READ_POLYGONS, READ_WEIGHT, READ_MORPH
 
 enum face_type{ FACE, SUBD, CCSS };
 
+struct struct_uv{
+    Int32 poly_id;
+    Int32 pt_num;
+    };
+
 struct struct_vertexData{
     Float32 x;
     Float32 y;
