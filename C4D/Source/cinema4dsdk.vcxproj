@@ -95,6 +95,7 @@
     </Midl>
     <ClCompile>
       <AdditionalIncludeDirectories>./source;./res;./res/description;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
       <IgnoreSpecificDefaultLibraries />
@@ -127,13 +128,14 @@
     <ClCompile Include="source\C4D_ExportToExternal\C4D_ExportToExternal.cpp" />
     <ClCompile Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.cpp" />
     <ClCompile Include="source\main.cpp" />
-    <ClCompile Include="source\Parser\Parser.cpp" />
+    <ClCompile Include="source\Parser\ParserRead.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DataStruct.h" />
     <ClInclude Include="source\C4D_ExportToExternal\C4D_ExportToExternal.h" />
     <ClInclude Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.h" />
     <ClInclude Include="source\main.h" />
-    <ClInclude Include="source\Parser\Parser.h" />
+    <ClInclude Include="source\Parser\ParserRead.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

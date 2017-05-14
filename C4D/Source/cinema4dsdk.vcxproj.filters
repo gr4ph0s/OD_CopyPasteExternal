@@ -24,7 +24,7 @@
     <ClCompile Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.cpp">
       <Filter>source\C4D_PasteFromExternal</Filter>
     </ClCompile>
-    <ClCompile Include="source\Parser\Parser.cpp">
+    <ClCompile Include="source\Parser\ParserRead.cpp">
       <Filter>source\Parser</Filter>
     </ClCompile>
   </ItemGroup>
@@ -38,8 +38,11 @@
     <ClInclude Include="source\C4D_PasteFromExternal\C4D_PasteFromExternal.h">
       <Filter>source\C4D_PasteFromExternal</Filter>
     </ClInclude>
-    <ClInclude Include="source\Parser\Parser.h">
+    <ClInclude Include="source\Parser\ParserRead.h">
       <Filter>source\Parser</Filter>
+    </ClInclude>
+    <ClInclude Include="DataStruct.h">
+      <Filter>source</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
