@@ -3,6 +3,7 @@
 #include <vector>
 #include <c4d_basetag.h>
 #include <c4d_baseobject.h>
+#include <operatingsystem.h>
 
 #include "c4d.h"
 #include "C4D_PasteFromExternal.h"
@@ -10,33 +11,8 @@
 #include "../../DataStruct.h"
 
 
-/*
-enum ValidMesh{
-    MESH_OK = 0,
-    MESH_NO_POLY,
-    MESH_NO_SPLINE,
-    MESH_NOT_ALIVE
-};
-
-ValidMesh PasteFromExternal::bIsValidMesh(const BaseObject* obj)
-{
-ValidMesh returnValue = MESH_OK;
-
-if (!obj)
-return returnValue = MESH_NOT_ALIVE;
-
-if (!obj->IsInstanceOf(Opolygon))
-return returnValue = MESH_NO_POLY;
-
-if (obj->IsInstanceOf(Ospline))
-return returnValue = MESH_NO_SPLINE;
-
-return returnValue;
-}
-*/
-
 // Made from my pythonic version https://gist.github.com/gr4ph0s/ebecaabcf90bbdd73a54124544e0b532
-void GetLinkedDiscontinuous(PolygonObject* pObj, Int32 pt_id, Int32 poly_id, maxon::BaseArray<struct_uv>* list_id){
+void PasteFromExternal::GetLinkedDiscontinuous(PolygonObject* pObj, Int32 pt_id, Int32 poly_id, maxon::BaseArray<struct_uv>* list_id){
     const CPolygon* polys_data = pObj->GetPolygonR();
     const CPolygon poly = polys_data[poly_id];
 
@@ -51,7 +27,7 @@ void GetLinkedDiscontinuous(PolygonObject* pObj, Int32 pt_id, Int32 poly_id, max
 }
 
 // Made from my pythonic version https://gist.github.com/gr4ph0s/ebecaabcf90bbdd73a54124544e0b532
-void GetLinkedContinuous(PolygonObject* pObj, Int32 pt_id, maxon::BaseArray<struct_uv>* list_id){
+void PasteFromExternal::GetLinkedContinuous(PolygonObject* pObj, Int32 pt_id, maxon::BaseArray<struct_uv>* list_id){
     Neighbor nbr = Neighbor();
     nbr.Init(pObj->GetPointCount(), pObj->GetPolygonR(), pObj->GetPolygonCount(), nullptr);
     Int32 *linkedPoly = nullptr, linkedPolyCount = 0;
@@ -71,28 +47,54 @@ void GetLinkedContinuous(PolygonObject* pObj, Int32 pt_id, maxon::BaseArray<stru
     }
 }
 
+void PasteFromExternal::SetUv(PolygonObject* pObj, UVWTag* uvTag, struct_uvData* uvData, BaseDocument* doc){
+    Vector vec = Vector(uvData->u, uvData->v, 0);
+
+    maxon::BaseArray<struct_uv>* linked_data = NewObj(maxon::BaseArray<struct_uv>);
+    if (uvData->isContinuous)
+        GetLinkedContinuous(pObj, uvData->pt_id, linked_data);
+    else
+        GetLinkedDiscontinuous(pObj, uvData->pt_id, uvData->pt_id, linked_data);
+
+    doc->AddUndo(UNDOTYPE_CHANGE, uvTag);
+
+
+    for (struct_uv& data : *linked_data){
+        UVWStruct buffer_uv = uvTag->GetSlow(data.poly_id);
+        buffer_uv[data.pt_num] = vec;
+        uvTag->SetSlow(data.poly_id, buffer_uv);
+        }
+
+}
 
 Bool PasteFromExternal::CreateUV(const iobject* objData, BaseDocument* doc, PolygonObject* obj)
 {
-    //CREATE UV again there is no proper ngon handle.
-    for (int i = 0; i < objData->polyCount; i++) {
-        //for each UV Info create an UV tag
+/*
+    CREATE UV there is no proper ngon handle.
+*/
+
+    //for each UV Info create an UV tag
+    for (int i = 0; i < objData->uvInfo.GetCount(); i++) {
         UVWTag* uvwTag = UVWTag::Alloc(objData->polyCount);
         uvwTag->SetName(objData->uvInfo[i].uvName);
 
         Int32 globalCount = 0;
 
         //then we set each UV
-        UVWStruct res;
-        UVWHandle data = uvwTag->GetDataAddressW();
-        for (Int32 y = globalCount; y<uvwTag->GetDataCount() + globalCount; y++){
-            UVWTag::Set(data, y, res);
-        }
-    globalCount += objData->uvInfo[i].uvCount;
+        for (int i = 0; i < objData->uvData.GetCount(); i++){
+            struct_uvData buffer_data = objData->uvData[i];
+            this->SetUv(obj, uvwTag, &buffer_data, doc);
+            }
+
+        //Add tag to the obj
+        obj->InsertTag(uvwTag);
+
+        globalCount += objData->uvInfo[i].uvCount;
     }
+    return true;
 }
 
-//Ugly function just for testing of the lolz !!! :)
+//Create PolyObj
 Bool PasteFromExternal::CreatePolyObj(const iobject* objData,BaseDocument *doc)
 {
     StopAllThreads();
@@ -127,7 +129,7 @@ Bool PasteFromExternal::CreatePolyObj(const iobject* objData,BaseDocument *doc)
                 list_polyObj_write[i][y] = objData->polygonData[i]->pts_id[y];
                 }
             }
-        //Ngon don't know how handle this shit so For the moment I stop the creation if any ngons found:/
+        //Ngon don't know how handle this shit so For the moment I stop the creation if any ngons found :/
         else
             {
                 PolygonObject::Free(polyObj);
@@ -144,7 +146,6 @@ Bool PasteFromExternal::CreatePolyObj(const iobject* objData,BaseDocument *doc)
     EventAdd();
     return true;
 }
-
 
 //Read temp file and store it into an iobject struct
 void PasteFromExternal::ParseFileToIobject(iobject* objData)
@@ -223,7 +224,7 @@ void PasteFromExternal::ParseFileToIobject(iobject* objData)
     StatusSetBar(percent);
     }
     //set data to our returned data only if we have read everything
-    if (currentLine == linesCount)
+    if (currentLine == linesCount + 1)
         objData->IsReadFinnished = true;
 
     StatusClear();
@@ -234,8 +235,10 @@ Bool PasteFromExternal::Execute(BaseDocument *doc)
     {
     AutoNew<iobject> dataObj;
     ParseFileToIobject(dataObj);
-    if (dataObj == nullptr || !dataObj->IsReadFinnished)
+    if (dataObj == nullptr || !dataObj->IsReadFinnished){
         GePrint("error");
+        return true;
+    }
 
     CreatePolyObj(dataObj, doc);
     return true;

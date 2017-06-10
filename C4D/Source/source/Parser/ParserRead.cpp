@@ -80,10 +80,11 @@ void ReadVerticesHeader(iobject* objData, std::string line, Int32* linesToRead, 
 
     //parse it in Int32 and fill data
     String maxonString = strData[1].c_str();
-    *linesToRead = maxonString.ToInt32();
-    objData->vertexCount = *linesToRead;
+    objData->vertexCount = maxonString.ToInt32();
+
 
     //Set read mode to Vertices
+    *linesToRead = maxonString.ToInt32();
     *toRead = READ_VERTICES;
     *linesReaded = 0;
     return;
@@ -98,10 +99,10 @@ void ReadPolygonsHeader(iobject* objData, std::string line, Int32* linesToRead, 
         return;
         }
 
-    String maxonString = strData[1].c_str();
-    *linesToRead = maxonString.ToInt32();
-    objData->polyCount = *linesToRead;
+    String maxonString = strData[1].c_str();    
+    objData->polyCount = maxonString.ToInt32();
 
+    *linesToRead = maxonString.ToInt32();
     *toRead = READ_POLYGONS;
     *linesReaded = 0;
 }
@@ -125,6 +126,7 @@ void ReadWeightHeader(iobject* objData, std::string line, Int32* linesToRead, Re
         return;
         }
 
+    *linesToRead = objData->vertexCount;
     *toRead = READ_WEIGHT;
     *linesReaded = 0;
 }
@@ -151,6 +153,8 @@ void ReadUVHeader(iobject* objData, std::string line, Int32* linesToRead, ReadSt
             GePrint("UV HEADER - FAIL INSERT");
         return;
         }
+
+    *linesToRead = maxonStringUvCount.ToInt32();
     *toRead = READ_UV;
     *linesReaded = 0;
 }
@@ -170,6 +174,8 @@ void ReadMorphHeader(iobject* objData, std::string line, Int32* linesToRead, Rea
             GePrint("MORPH HEADER - FAIL INSERT");
         return;
         }
+
+    *linesToRead = objData->vertexCount;
     *toRead = READ_WEIGHT;
     *linesReaded = 0;
 }
@@ -320,7 +326,7 @@ void ReadUVs(iobject* objData, std::string line, Int32* linesToRead, ReadState* 
     String maxonStringPoly_id, maxonStringPt_id;
 
     //if discontinuous UV
-    if (uvStrData.size() == 5){
+    if (strData.size() == 5){
         isContinuous = false;
         maxonStringPoly_id = strData[2].c_str();
         maxonStringPt_id = strData[4].c_str();
@@ -334,7 +340,7 @@ void ReadUVs(iobject* objData, std::string line, Int32* linesToRead, ReadState* 
     //Fill our struct
     uvData.isContinuous = isContinuous;
     uvData.u = maxonStringU.ToFloat();
-    uvData.v = maxonStringU.ToFloat();
+    uvData.v = maxonStringV.ToFloat();
     uvData.pt_id = maxonStringPt_id.ToInt32();
     uvData.poly_id = maxonStringPoly_id.ToInt32();
 
